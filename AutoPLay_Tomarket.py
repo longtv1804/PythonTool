@@ -47,7 +47,6 @@ class ChildThread(threading.Thread):
 
 	p1 = None
 	P2 = None
-	#startTime = 0
 	mGameController = None
 
 	def __init__(this, gameCtr):
@@ -60,7 +59,6 @@ class ChildThread(threading.Thread):
 
 	def resume(this):
 		this.mIsPause = False
-	#this.startTime = time.time()
 
 	def exit(this):
 		this.mIsPause = True
@@ -72,14 +70,12 @@ class ChildThread(threading.Thread):
 		while i < this.p2.x:
 			if this.mIsPause == True or this.mIsRunning == False:
 				break
-			
 			j = this.p1.y
 			while j < this.p2.y:
 				if this.mIsPause == True or this.mIsRunning == False:
 					break
 				if pyautogui.pixelMatchesColor(i, j, (255, 60, 105), tolerance=20):
-					#pyautogui.click(i, j)
-					pyautogui.click(i, j + 5)
+					pyautogui.click(i, j + 1)
 					pass
 				j += JUMP_PIXELS
 			i += JUMP_PIXELS
@@ -87,9 +83,6 @@ class ChildThread(threading.Thread):
 	def run(this):
 		while this.mIsRunning == True: 
 			while this.mIsPause == False:
-				# if time.time() - this.startTime > 30.5:
-				# 	this.mGameController.pauseAfterEndGame()
-				# 	break
 				this.checkAndClick()
 			time.sleep(0.1)
 
