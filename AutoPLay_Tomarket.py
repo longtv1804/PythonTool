@@ -9,29 +9,37 @@ from pynput.keyboard import Listener, KeyCode, Key
 pyautogui.PAUSE = 0.001
 
 JUMP_PIXELS = 20
-NUM_OF_THREAD = 17
+NUM_OF_THREAD = 18
 GAME_PLAY_TIME = 31
 START_GAME_BUTTONs = 	[[200, 340], [520, 340], [840, 340], [1160, 340], [1480, 340], [1800, 340], \
-						 [200, 860]]
+						 [200, 860], [520, 860], [840, 860], [1160, 860]]
 NEXT_GAME_BUTTONs =		[[150, 480], [480, 480], [800, 480], [1120, 480], [1440, 480], [1760, 480], \
-						 [150, 995]]
+						 [150, 995], [480, 995], [800, 995], [1120, 995]]
 CANCEL_SHARINGs =		[[160, 140], [475, 140], [790, 140], [1105, 140], [1420, 140], [1735, 140], \
-						 [160, 655]]
+						 [160, 655], [475, 655], [790, 655], [1105, 655]]
 POINTs = 	[[25, 105, 280, 404], 	\
 			[340, 105, 595, 404], 	\
 			[655, 105, 910, 404], 	\
 			[970, 105, 1225, 404], 	\
 			[1288, 105, 1540, 404], \
 			[1600, 105, 1855, 404], \
-			[25, 625, 280, 920]]
+			[25, 625, 280, 920], \
+			[340, 625, 595, 920], \
+			[655, 625, 910, 920], \
+			[970, 625, 1225, 920]]
 
 GAME_STATE_DEFAULT = 0
 GAME_STATE_PLAYING = 1
 GAME_STATE_PAUSE = 2
 GAME_STATE_PAUSE_IN_PLAYING = 3
-GAME_STATE_WAIT_NEXT_GAMGE = 4
+GAME_STATE_WAIT_NEXT_GAME = 4
+GAME_STATE_NEXTING_SCREEN = 5
+GAME_STATE_PAUSE_IN_NEXTING_SCREEN = 6
+GAME_STATE_PAUSE_BY_USER = 7
+GAME_STATE_PAUSE_IN_WAIT_NEXT_GAMGE = 8
 
 gLDplayerId = -1
+gNumOfScreens = -1
 
 class iPosition:
 	x = 0
@@ -47,6 +55,8 @@ class ChildThread(threading.Thread):
 
 	p1 = None
 	P2 = None
+
+	mClickedCount = 0
 	mGameController = None
 
 	def __init__(this, gameCtr):
@@ -59,11 +69,15 @@ class ChildThread(threading.Thread):
 
 	def resume(this):
 		this.mIsPause = False
+		this.mClickedCount = 0
 
 	def exit(this):
 		this.mIsPause = True
 		this.mIsRunning = False
-
+	
+	def getCount(this):
+		return this.mClickedCount
+	
 	def checkAndClick(this):
 		i = this.p1.x
 		j = 0
@@ -75,7 +89,8 @@ class ChildThread(threading.Thread):
 				if this.mIsPause == True or this.mIsRunning == False:
 					break
 				if pyautogui.pixelMatchesColor(i, j, (255, 60, 105), tolerance=20):
-					pyautogui.click(i, j + 1)
+					pyautogui.click(i, j)
+					this.mClickedCount += 1
 					pass
 				j += JUMP_PIXELS
 			i += JUMP_PIXELS
@@ -108,12 +123,19 @@ class GameController(threading.Thread):
 	mSubThreads = []
 
 	mGameState = 0
+	mScreenId = 0
+	mLimitOfScreen = 0
 
-	def __init__(this):
+	def __init__(this, screenId, limitScreen):
 		super(GameController, this).__init__()
+		this.mScreenId = screenId
+		this.mLimitOfScreen = limitScreen
+		if limitScreen == -1 or limitScreen == 0:
+			this.mLimitOfScreen = 1
 		pass
 
 	def prepare(this, id):
+		print("prepare({}) mSubThreads={}".format(id, len(this.mSubThreads)))
 		if id == -1:
 			print("ERROR: play id is not assigned")
 			return
@@ -122,7 +144,11 @@ class GameController(threading.Thread):
 				child = ChildThread(i)
 				child.start()
 				this.mSubThreads.append(child)
-		
+	
+	def setPosition(this, id):
+		if len(this.mSubThreads) == 0:
+			print("ERROR: mSubThreads has not been assinged")
+			return
 		gameP1 = iPosition()
 		gameP2 = iPosition()
 		gameP1.x = POINTs[id][0]
@@ -130,16 +156,25 @@ class GameController(threading.Thread):
 		gameP2.x = POINTs[id][2]
 		gameP2.y = POINTs[id][3]
 		print("assign sub P1({}) P2({})".format(gameP1.toString(), gameP2.toString()))
-		for i in range(0, NUM_OF_THREAD):
+		for i in range(0, int(NUM_OF_THREAD/2)):
 			p1 = iPosition()
 			p1.x = gameP1.x
 			p1.y = gameP1.y + i * JUMP_PIXELS
 			p2 = iPosition()
-			p2.x = gameP2.x
+			p2.x = int((gameP1.x + gameP2.x)/2)
 			p2.y = p1.y + 1
-			this.mSubThreads[i].p1 = p1
-			this.mSubThreads[i].p2 = p2
-			print("assign sub P1({}) P2({})".format(p1.toString(), p2.toString()))
+			p3 = iPosition()
+			p3.x = p2.x + 10
+			p3.y = p1.y
+			p4 = iPosition()
+			p4.x = gameP2.x
+			p4.y = p2.y
+			this.mSubThreads[i * 2].p1 = p1
+			this.mSubThreads[i * 2].p2 = p2
+			this.mSubThreads[i * 2 + 1].p1 = p3
+			this.mSubThreads[i * 2 + 1].p2 = p4
+			print("assign sub thread-{} P1{} P2{}".format(i * 2, p1.toString(), p2.toString()))
+			print("assign sub thread-{} P3{} P4{}".format(i * 2 + 1, p3.toString(), p4.toString()))
 		
 		this.mStartGameButton = iPosition()
 		this.mStartGameButton.x = START_GAME_BUTTONs[id][0]
@@ -153,6 +188,7 @@ class GameController(threading.Thread):
 		print("mStartGameButton({}) mNextGameButton({}) mCancelSharingButton({})".format(this.mStartGameButton.toString(), this.mNextGameButton.toString(), this.mCancelSharingButton.toString()))
 	
 	def startGame(this):
+		print("start game at id=", this.mScreenId)
 		pyautogui.click(this.mStartGameButton.x, this.mStartGameButton.y)
 		time.sleep(1.5)
 		this.resume()
@@ -166,11 +202,23 @@ class GameController(threading.Thread):
 		this.resume()
 
 	def pauseAfterEndGame(this):
-		print("pauseAfterEndGame")
 		this.pause()
-		timer = Timer(this, 5)
-		timer.start()
-		this.mGameState = GAME_STATE_WAIT_NEXT_GAMGE
+		clickedCount = 0
+		for i in range(0,NUM_OF_THREAD):
+			clickedCount += this.mSubThreads[i].getCount()
+		print("pauseAfterEndGame count=", clickedCount)
+		if clickedCount <  10:
+			if this.mScreenId + 1 >= len(POINTs):
+				print("Exit Script at last the creen")
+				this.exit()
+			else:
+				this.nextScreen()
+		else:
+			print("wait next game..")
+			timer = Timer(this, 9)
+			timer.start()
+			this.mGameState = GAME_STATE_WAIT_NEXT_GAME
+		pass
 
 	def pause(this):
 		print("Pause")
@@ -192,6 +240,25 @@ class GameController(threading.Thread):
 		timer = Timer(this, GAME_PLAY_TIME)
 		timer.start()
 
+	def exit(this):
+		this.mGameState = GAME_STATE_DEFAULT
+		if len(this.mSubThreads) != 0:
+			for i in range(0,NUM_OF_THREAD):
+				this.mSubThreads[i].exit()
+
+	def nextScreen(this):
+		this.mLimitOfScreen -= 1
+		if this.mLimitOfScreen == 0:
+			print("Reach Limit of Creen. EXIT()")
+			this.exit()
+		else:
+			this.mScreenId = this.mScreenId + 1
+			print("===preparing for next screen {}===========================".format(this.mScreenId))
+			this.setPosition(this.mScreenId)
+			timer = Timer(this, 1.5)
+			timer.start()
+			this.mGameState = GAME_STATE_NEXTING_SCREEN
+
 	def timeOut(this):
 		match this.mGameState:
 			case 0:							#GAME_STATE_DEFAULT
@@ -201,15 +268,26 @@ class GameController(threading.Thread):
 			case 2:							#GAME_STATE_PAUSE
 				pass
 			case 3:							#GAME_STATE_PAUSE_IN_PLAYING
-				this.mGameState = GAME_STATE_PAUSE
+				this.mGameState = GAME_STATE_PAUSE_BY_USER
 				pass
-			case 4:							#GAME_STATE_WAIT_NEXT_GAMGE
+			case 4:							#GAME_STATE_WAIT_NEXT_GAME
 				this.nextGame()
+			case 5:							#GAME_STATE_NEXTING_SCREEN
+				this.startGame()
+			case 6:							#GAME_STATE_PAUSE_IN_NEXTING_SCREEN
+				this.mGameState = GAME_STATE_PAUSE_BY_USER
+				pass
+			case 7:							#GAME_STATE_PAUSE_BY_USER
+				pass
+			case 8:							#GAME_STATE_PAUSE_IN_WAIT_NEXT_GAMGE
+				this.mGameState = GAME_STATE_PAUSE_BY_USER
+				pass
 
 	def HandleF2Key(this):
 		match this.mGameState:
 			case 0:							#GAME_STATE_DEFAULT
-				this.prepare(gLDplayerId)
+				this.prepare(this.mScreenId)
+				this.setPosition(this.mScreenId)
 				this.startGame()
 			case 1:							#GAME_STATE_PLAYING
 				this.pauseInPlaying()
@@ -218,14 +296,19 @@ class GameController(threading.Thread):
 			case 3:							#GAME_STATE_PAUSE_IN_PLAYING
 				print("can not run/pause in GAME_STATE_PAUSE_IN_PLAYING")
 				pass
-			case 4:							#GAME_STATE_WAIT_NEXT_GAMGE
-				this.mGameState = GAME_STATE_PAUSE
-
-	def exit(this):
-		this.mGameState = GAME_STATE_DEFAULT
-		if len(this.mSubThreads) != 0:
-			for i in range(0,NUM_OF_THREAD):
-				this.mSubThreads[i].exit()
+			case 4:							#GAME_STATE_WAIT_NEXT_GAME
+				this.mGameState = GAME_STATE_PAUSE_IN_WAIT_NEXT_GAMGE
+			case 5:							#GAME_STATE_NEXTING_SCREEN
+				this.mGameState = GAME_STATE_PAUSE_IN_NEXTING_SCREEN
+				pass
+			case 6:							#GAME_STATE_PAUSE_IN_NEXTING_SCREEN
+				print("can not run/pause in GAME_STATE_PAUSE_IN_NEXTING_SCREEN")
+				pass
+			case 7:							#GAME_STATE_PAUSE_BY_USER
+				this.startGame()
+			case 8:							#GAME_STATE_PAUSE_IN_WAIT_NEXT_GAMGE
+				print("can not run/pause in GAME_STATE_PAUSE_IN_WAIT_NEXT_GAMGE")
+				pass
 
 	def getPosition(this):
 		p = iPosition()
@@ -235,10 +318,14 @@ class GameController(threading.Thread):
 class ScriptController:
 	mGameController = None
 
-	def __init__(this):
-		this.mGameController = GameController()
+	def __init__(this, screenId, numOfScreen):
+		this.mGameController = GameController(screenId, numOfScreen)
 		pass
 
+	def exit(this):
+		this.mGameController.exit()
+		listener.stop()
+	
 	def on_press(this, key):
 		if key == Key.f4:
 			this.mGameController.getPosition()
@@ -250,11 +337,14 @@ class ScriptController:
 
 ###############################################################################
 #main start
-if len(sys.argv) == 2:
+if len(sys.argv) >= 2:
 	gLDplayerId = int(sys.argv[1])
-print("play id=", gLDplayerId)
+if len(sys.argv) >= 3:
+	gNumOfScreens = int(sys.argv[2])
 
-scriptCtrl = ScriptController() 
+print("play id={} gNumOfScreens={}".format(gLDplayerId, gNumOfScreens))
+
+scriptCtrl = ScriptController(gLDplayerId, gNumOfScreens) 
 def on_press(key):
 	scriptCtrl.on_press(key)
 	if key == Key.f1:
