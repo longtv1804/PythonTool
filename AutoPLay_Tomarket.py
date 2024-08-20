@@ -82,7 +82,7 @@ class ChildThread(threading.Thread):
 	def checkAndClick(this):
 		i = this.p1.x
 		j = 0
-		paddingPosition = random.randint(0, 20)
+		paddingPosition = random.randint(0, 12)
 		while i < this.p2.x:
 			if this.mIsPause == True or this.mIsRunning == False:
 				break
@@ -154,7 +154,7 @@ class GameController(threading.Thread):
 		gameP1 = iPosition()
 		gameP2 = iPosition()
 		gameP1.x = POINTs[id][0] + 8
-		gameP1.y = POINTs[id][1] + 20
+		gameP1.y = POINTs[id][1] + 35
 		gameP2.x = POINTs[id][2]
 		gameP2.y = POINTs[id][3]
 		print("assign sub P1({}) P2({})".format(gameP1.toString(), gameP2.toString()))
@@ -167,9 +167,9 @@ class GameController(threading.Thread):
 			p2.y = gameP1.y + 1
 			p3 = iPosition()
 			p3.x = p1.x + int(JUMP_PIXELS/2)
-			p3.y = p1.y + 35
+			p3.y = p1.y + 80
 			p4 = iPosition()
-			p4.x = p2.x
+			p4.x = p3.x + JUMP_PIXELS + 1
 			p4.y = p3.y + 1
 			if i == int(NUM_OF_THREAD/2) - 1:
 				p4.x = p3.x + 1
