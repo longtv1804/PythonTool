@@ -5,11 +5,12 @@ import threading
 import sys
 from pynput.mouse import Button, Controller
 from pynput.keyboard import Listener, KeyCode, Key
+import random
 
 pyautogui.PAUSE = 0.001
 
-JUMP_PIXELS = 20
-NUM_OF_THREAD = 18
+JUMP_PIXELS = 28
+NUM_OF_THREAD = 10
 GAME_PLAY_TIME = 31
 START_GAME_BUTTONs = 	[[200, 340], [520, 340], [840, 340], [1160, 340], [1480, 340], [1800, 340], \
 						 [200, 860], [520, 860], [840, 860], [1160, 860]]
@@ -81,15 +82,16 @@ class ChildThread(threading.Thread):
 	def checkAndClick(this):
 		i = this.p1.x
 		j = 0
+		paddingPosition = random.randint(0, 20)
 		while i < this.p2.x:
 			if this.mIsPause == True or this.mIsRunning == False:
 				break
-			j = this.p1.y
-			while j < this.p2.y:
+			j = this.p1.y + paddingPosition
+			while j < this.p2.y + paddingPosition:
 				if this.mIsPause == True or this.mIsRunning == False:
 					break
 				if pyautogui.pixelMatchesColor(i, j, (255, 60, 105), tolerance=20):
-					pyautogui.click(i, j)
+					pyautogui.click(i, j + 3)
 					this.mClickedCount += 1
 					pass
 				j += JUMP_PIXELS
@@ -151,30 +153,34 @@ class GameController(threading.Thread):
 			return
 		gameP1 = iPosition()
 		gameP2 = iPosition()
-		gameP1.x = POINTs[id][0]
-		gameP1.y = POINTs[id][1]
+		gameP1.x = POINTs[id][0] + 8
+		gameP1.y = POINTs[id][1] + 20
 		gameP2.x = POINTs[id][2]
 		gameP2.y = POINTs[id][3]
 		print("assign sub P1({}) P2({})".format(gameP1.toString(), gameP2.toString()))
 		for i in range(0, int(NUM_OF_THREAD/2)):
 			p1 = iPosition()
 			p1.x = gameP1.x
-			p1.y = gameP1.y + i * JUMP_PIXELS
+			p1.y = gameP1.y
 			p2 = iPosition()
-			p2.x = int((gameP1.x + gameP2.x)/2)
-			p2.y = p1.y + 1
+			p2.x = gameP1.x + JUMP_PIXELS + 1
+			p2.y = gameP1.y + 1
 			p3 = iPosition()
-			p3.x = p2.x + 10
-			p3.y = p1.y
+			p3.x = p1.x + int(JUMP_PIXELS/2)
+			p3.y = p1.y + 35
 			p4 = iPosition()
-			p4.x = gameP2.x
-			p4.y = p2.y
+			p4.x = p2.x
+			p4.y = p3.y + 1
+			if i == int(NUM_OF_THREAD/2) - 1:
+				p4.x = p3.x + 1
+				p4.y = p3.y + 1
 			this.mSubThreads[i * 2].p1 = p1
 			this.mSubThreads[i * 2].p2 = p2
 			this.mSubThreads[i * 2 + 1].p1 = p3
 			this.mSubThreads[i * 2 + 1].p2 = p4
 			print("assign sub thread-{} P1{} P2{}".format(i * 2, p1.toString(), p2.toString()))
 			print("assign sub thread-{} P3{} P4{}".format(i * 2 + 1, p3.toString(), p4.toString()))
+			gameP1.x += JUMP_PIXELS * 2
 		
 		this.mStartGameButton = iPosition()
 		this.mStartGameButton.x = START_GAME_BUTTONs[id][0]
